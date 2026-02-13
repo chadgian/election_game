@@ -8,3 +8,7 @@ local.properties
 .cxx/
 *.iml
 app/build/
+node_modules/
+/npm-debug.log*
+/yarn-error.log
+/dist/

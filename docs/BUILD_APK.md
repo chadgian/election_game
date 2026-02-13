@@ -1,19 +1,23 @@
-# Export APK
+# Build and Export APK (React Native)
 
-Use this project script to build and export the APK:
+Use the provided script:
 
 ```bash
 scripts/export_apk.sh
 ```
 
-Expected output file:
-
-- `dist/election-game-debug.apk`
+The script will:
+1. Detect a local JDK (prefers 21, then 17).
+2. Ensure Node/npm are available.
+3. Install JS dependencies if `node_modules` is missing.
+4. Build Android debug APK using Gradle.
+5. Copy output to `dist/election-game-debug.apk`.
 
 ## Requirements
+- Node.js 18+
+- npm
+- JDK 17+
+- Android SDK/Build Tools
+- Network access for first dependency resolution
 
-- JDK 17+ (JDK 21 recommended)
-- Android SDK installed and configured for Gradle/AGP
-- Network access to resolve Gradle and Android dependencies on first build
-
-If your environment blocks Maven/Google repositories, run the script in Android Studio or in a network-enabled CI runner.
+If the build fails in restricted environments, run the script on your local machine or CI with full internet and Android SDK configured.

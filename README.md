@@ -1,25 +1,31 @@
-# Election Game (Android)
+# Election Game (React Native)
 
-A turn-based Android campaign simulation prototype built with Kotlin + Jetpack Compose.
+A turn-based election simulation rebuilt in React Native for Android deployment.
 
-## Features
-- 10-week election loop with weekly events.
-- 11 demographic groups with support/loyalty dynamics.
-- Candidate attributes and incumbency effects.
-- Contextual choice pool engine that generates 50 possible choices per context and presents 3–5 each week.
-- Ethical/unethical choices with delayed consequences.
-- Alliances, legal pressure, scandal risk, momentum, and campaign resources.
-- End-of-campaign summary score with narrative-style outcome.
+## What changed
+- Migrated from Jetpack Compose to a React Native application.
+- Ported the campaign simulation engine (10-week loop, demographics, ethics/scandal systems, delayed consequences) to JavaScript.
+- Kept Android packaging flow so you can export an installable debug APK.
 
-## Run
-1. Open in Android Studio (Giraffe+ recommended).
-2. Sync Gradle.
-3. Run the `app` module on an emulator/device.
+## Run locally
+1. Install Node.js 18+, JDK 17+, Android SDK, and Gradle (or generate Gradle wrapper).
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start Metro:
+   ```bash
+   npm run start
+   ```
+4. In another terminal, run on Android:
+   ```bash
+   npm run android
+   ```
 
-## Notes
-- The simulation engine is intentionally data-driven and extensible.
-- You can add more parties/candidates and richer AI in `GameEngine.kt`.
+## APK export
+```bash
+scripts/export_apk.sh
+```
 
-
-## APK Export
-Run `scripts/export_apk.sh` to build and copy the debug APK to `dist/election-game-debug.apk`.
+Expected output:
+- `dist/election-game-debug.apk`

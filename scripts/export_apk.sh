@@ -5,17 +5,32 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 for v in 21.0.2 21 17.0.2 17; do
-    if [[ -d "$HOME/.local/share/mise/installs/java/$v" ]]; then
-      export JAVA_HOME="$HOME/.local/share/mise/installs/java/$v"
-      break
-    fi
-  done
+  if [[ -d "$HOME/.local/share/mise/installs/java/$v" ]]; then
+    export JAVA_HOME="$HOME/.local/share/mise/installs/java/$v"
+    break
+  fi
+done
 
 if [[ -z "${JAVA_HOME:-}" || ! -x "$JAVA_HOME/bin/java" ]]; then
-  echo "ERROR: JAVA_HOME is not set to a valid JDK."
+  echo "ERROR: JAVA_HOME is not set to a valid JDK 17+ installation."
   exit 1
 fi
 export PATH="$JAVA_HOME/bin:$PATH"
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "ERROR: Node.js is required for React Native builds."
+  exit 1
+fi
+
+if [[ ! -d node_modules ]]; then
+  if command -v npm >/dev/null 2>&1; then
+    echo "Installing JS dependencies..."
+    npm install
+  else
+    echo "ERROR: npm is required to install dependencies."
+    exit 1
+  fi
+fi
 
 if ! command -v gradle >/dev/null 2>&1 && [[ ! -x ./gradlew ]]; then
   echo "ERROR: Gradle executable not found (install gradle or add gradle wrapper)."
