@@ -19,3 +19,7 @@ A turn-based Android campaign simulation prototype built with Kotlin + Jetpack C
 ## Notes
 - The simulation engine is intentionally data-driven and extensible.
 - You can add more parties/candidates and richer AI in `GameEngine.kt`.
+
+
+## APK Export
+Run `scripts/export_apk.sh` to build and copy the debug APK to `dist/election-game-debug.apk`.
