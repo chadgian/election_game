@@ -79,5 +79,6 @@ data class GameState(
     val totalWeeks: Int,
     val candidate: Candidate,
     val log: List<String>,
-    val delayedConsequences: Map<Int, List<ChoiceEffect>>
+    val delayedConsequences: Map<Int, List<ChoiceEffect>>,
+    val randomSeed: Int
 )

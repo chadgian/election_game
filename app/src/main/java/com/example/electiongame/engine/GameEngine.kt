@@ -56,11 +56,13 @@ object GameEngine {
             totalWeeks = TOTAL_WEEKS,
             candidate = candidate,
             log = listOf("Campaign launched. Incumbent: ${candidate.attributes.incumbent}"),
-            delayedConsequences = emptyMap()
+            delayedConsequences = emptyMap(),
+            randomSeed = seed
         )
     }
 
-    fun generateWeeklyEvent(state: GameState, random: Random = Random(state.week * 104729)): WeeklyEvent {
+    fun generateWeeklyEvent(state: GameState): WeeklyEvent {
+        val random = Random(state.randomSeed + state.week * 104729)
         val context = when (state.week) {
             1 -> ContextType.FUNDRAISING
             3, 4 -> ContextType.ALLIANCE
@@ -78,9 +80,10 @@ object GameEngine {
         )
     }
 
-    fun applyChoice(state: GameState, option: ChoiceOption, random: Random = Random(state.week * 99991)): GameState {
+    fun applyChoice(state: GameState, option: ChoiceOption): GameState {
+        val random = Random(state.randomSeed + state.week * 99991 + option.id.hashCode())
         var nextCandidate = state.candidate
-        var log = state.log.toMutableList()
+        val log = state.log.toMutableList()
         val updatedDemographics = nextCandidate.demographics.toMutableMap()
 
         option.effect.supportShift.forEach { (id, value) ->
@@ -118,7 +121,7 @@ object GameEngine {
             log.add("A delayed consequence has been seeded for week $delayWeek.")
         }
 
-        delayed[state.week]?.forEach {
+        delayed.remove(state.week)?.forEach {
             nextCandidate = nextCandidate.copy(
                 momentum = clamp(nextCandidate.momentum + it.momentumDelta),
                 scandalRisk = clamp(nextCandidate.scandalRisk + it.scandalRiskDelta),
@@ -140,8 +143,9 @@ object GameEngine {
         return state.copy(
             week = (state.week + 1).coerceAtMost(state.totalWeeks + 1),
             candidate = nextCandidate,
-            log = log.takeLast(24),
-            delayedConsequences = delayed
+            log = log.takeLast(30),
+            delayedConsequences = delayed,
+            randomSeed = state.randomSeed + random.nextInt(1, Int.MAX_VALUE / 8)
         )
     }
 
@@ -149,10 +153,11 @@ object GameEngine {
 
     fun resultSummary(state: GameState): String {
         val demoScore = state.candidate.demographics.values.sumOf { it.support * it.turnoutWeight }.roundToInt()
-        val stability = (state.candidate.mediaTrust + state.candidate.ethicsScore + state.candidate.allianceLoyalty) / 3
+        val loyaltyScore = state.candidate.demographics.values.averageOf { it.loyalty }
+        val stability = (state.candidate.mediaTrust + state.candidate.ethicsScore + state.candidate.allianceLoyalty + loyaltyScore) / 4
         val finalScore = demoScore + state.candidate.momentum + (state.candidate.funds / 10) + stability - state.candidate.scandalRisk
         val verdict = if (finalScore >= 145) "Victory" else "Defeat"
-        return "$verdict | Score $finalScore | Popular energy ${state.candidate.momentum} | Scandal risk ${state.candidate.scandalRisk}"
+        return "$verdict | Score $finalScore | Momentum ${state.candidate.momentum} | Scandal ${state.candidate.scandalRisk}"
     }
 
     private fun buildChoicePool(context: ContextType, state: GameState, random: Random): List<ChoiceOption> {
@@ -228,6 +233,12 @@ object GameEngine {
     }
 
     private fun clamp(value: Int): Int = value.coerceIn(0, 100)
+
+    private inline fun <T> Iterable<T>.averageOf(selector: (T) -> Int): Int {
+        val list = toList()
+        if (list.isEmpty()) return 0
+        return (list.sumOf(selector).toDouble() / list.size).roundToInt()
+    }
 
     private fun demographic(
         id: String,
