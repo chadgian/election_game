@@ -11,6 +11,8 @@ export default function PlanningPage() {
   const [state, setState] = useState(() => newGame('United States'));
   const [event, setEvent] = useState(() => generateWeeklyEvent(state));
   const [selectedOptions, setSelectedOptions] = useState([]);
+  const [mediaChoice, setMediaChoice] = useState('answer');
+  const [mediaAnswer, setMediaAnswer] = useState('');
 
   useEffect(() => {
     const stored = loadGameState();
@@ -22,6 +24,7 @@ export default function PlanningPage() {
   const score = useMemo(() => computeElectionScore(state), [state]);
   const rules = useMemo(() => getRules(state), [state]);
   const analystTip = useMemo(() => getAnalystTip(state, event, selectedOptions), [state, event, selectedOptions]);
+  const pendingMediaQuestion = state.meta.pendingMediaQuestion;
 
   const toggleOption = (option) => {
     const exists = selectedOptions.some((item) => item.id === option.id);
@@ -31,10 +34,15 @@ export default function PlanningPage() {
   };
 
   const handleProceedWeek = () => {
-    const next = proceedWeek(state, selectedOptions);
+    const mediaPayload = pendingMediaQuestion
+      ? (mediaChoice === 'ignore' ? { ignored: true, answer: '' } : { ignored: false, answer: mediaAnswer })
+      : null;
+    const next = proceedWeek(state, selectedOptions, mediaPayload);
     setState(next);
     saveGameState(next);
     setSelectedOptions([]);
+    setMediaAnswer('');
+    setMediaChoice('answer');
     if (!isFinished(next)) setEvent(generateWeeklyEvent(next));
     router.push('/briefing');
   };
@@ -51,8 +59,28 @@ export default function PlanningPage() {
 
       <section className="glass panel">
         <h2>Week {state.week} Planning Room</h2>
-        <p>{state.country.icon} {state.country.name} • National Pulse {score.nationalPulse}% • Target {score.target}</p>
+        <p>{state.country.icon} {state.country.name} • {state.candidate.party} • National Pulse {score.nationalPulse}% • Target {score.target}</p>
       </section>
+
+      {pendingMediaQuestion ? (
+        <section className="glass panel mediaPanel">
+          <h2>🎙️ Media Question This Week</h2>
+          <p><strong>Topic:</strong> {pendingMediaQuestion.topic} | <strong>Backdrop:</strong> {pendingMediaQuestion.contextHint}</p>
+          <p>{pendingMediaQuestion.question}</p>
+          <div className="mediaActions">
+            <label><input type="radio" name="media_choice" checked={mediaChoice === 'answer'} onChange={() => setMediaChoice('answer')} /> Answer question</label>
+            <label><input type="radio" name="media_choice" checked={mediaChoice === 'ignore'} onChange={() => setMediaChoice('ignore')} /> Ignore question</label>
+          </div>
+          {mediaChoice === 'answer' ? (
+            <textarea
+              className="mediaInput"
+              value={mediaAnswer}
+              onChange={(e) => setMediaAnswer(e.target.value)}
+              placeholder="Type your response. AI will evaluate impact based on question and campaign context."
+            />
+          ) : null}
+        </section>
+      ) : null}
 
       {!isFinished(state) ? (
         <section className="layoutSingle">

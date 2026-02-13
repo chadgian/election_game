@@ -7,10 +7,45 @@ const tones = ['principled', 'pragmatic', 'aggressive', 'visionary', 'populist']
 const issues = ['economy', 'jobs', 'education', 'healthcare', 'security', 'infrastructure', 'corruption', 'climate', 'technology', 'cost of living'];
 const oppositionPlaybook = ['Negative Ads', 'Regional Rally', 'Debate Attack', 'Influencer Push', 'Policy Copycat', 'Ground Sweep'];
 const worldEvents = ['Fuel price spike', 'Breaking corruption leak', 'Major celebrity endorsement', 'Natural disaster response test', 'Unexpected economic report', 'Viral misinformation wave'];
+const mediaQuestionBank = [
+  { topic: 'economy', question: 'Inflation is climbing. What is your immediate plan to protect household purchasing power?', intensity: 6 },
+  { topic: 'jobs', question: 'Layoffs rose this month. How will your campaign protect workers and small businesses?', intensity: 5 },
+  { topic: 'corruption', question: 'A corruption exposé is trending. What reforms would your administration deliver in the first 100 days?', intensity: 7 },
+  { topic: 'security', question: 'Security concerns are rising in key regions. What concrete action would you prioritize?', intensity: 6 },
+  { topic: 'climate', question: 'A recent climate disaster exposed weak preparedness. How will you improve resilience?', intensity: 5 },
+];
+const oppositionArchetypes = ['Populist Nationalist', 'Technocratic Reformer', 'Traditional Conservative', 'Grassroots Progressive', 'Media Savvy Centrist'];
 
 const clamp = (v) => Math.max(0, Math.min(100, Math.round(v)));
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min)) + min;
 const sample = (arr) => arr[randomInt(0, arr.length)];
+
+const generateOpponentTraits = () => ({
+  style: sample(oppositionArchetypes),
+  aggression: randomInt(35, 86),
+  discipline: randomInt(35, 86),
+  mediaSkill: randomInt(35, 86),
+  policyDepth: randomInt(35, 86),
+});
+
+const pickOpponentParty = (playerParty, partyList = []) => {
+  const filtered = (partyList || []).filter((p) => p && p !== playerParty);
+  return filtered.length ? filtered[randomInt(0, filtered.length)] : 'National Opposition Coalition';
+};
+
+const generateMediaQuestion = (state) => {
+  if (state.week <= 1 || state.week > state.totalWeeks) return null;
+  if (Math.random() < 0.5) return null;
+  const base = sample(mediaQuestionBank);
+  return {
+    id: `media_${state.week}_${base.topic}`,
+    topic: base.topic,
+    week: state.week,
+    intensity: base.intensity,
+    question: base.question,
+    contextHint: state.meta.weeklyEvent?.title || 'General voter anxiety',
+  };
+};
 
 const buildDemographics = (country) => country.demographics.reduce((acc, name, i) => {
   const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
@@ -32,14 +67,17 @@ const buildRegions = (country) => country.regions.reduce((acc, r) => {
 const generateOppositionPlan = (state) => {
   const targetRegion = sample(state.country.regions);
   const move = sample(oppositionPlaybook);
+  const traits = state.opponent.traits || generateOpponentTraits();
+  const aggressionBonus = Math.floor((traits.aggression - 50) / 18);
+  const disciplineBonus = Math.floor((traits.discipline - 50) / 20);
   return {
     move,
     targetRegionId: targetRegion.id,
     targetRegionName: targetRegion.name,
-    momentum: randomInt(1, 6),
-    narrative: randomInt(1, 5),
-    playerSupportPenalty: randomInt(1, 4),
-    mediaPenalty: randomInt(0, 4),
+    momentum: clamp(2 + randomInt(0, 5) + aggressionBonus),
+    narrative: clamp(1 + randomInt(0, 4) + disciplineBonus),
+    playerSupportPenalty: Math.max(1, 1 + randomInt(0, 4) + aggressionBonus),
+    mediaPenalty: Math.max(0, randomInt(0, 4) + (traits.mediaSkill > 65 ? 1 : 0)),
   };
 };
 
@@ -49,14 +87,91 @@ const generateWeeklyWorldEvent = () => ({
   trustShift: randomInt(-3, 4),
 });
 
-export const newGame = (countryName = 'United States') => {
+const scoreMediaAnswer = (question, answer) => {
+  if (!answer || !answer.trim()) return { quality: 18, confidence: 20 };
+  const text = answer.toLowerCase();
+  const keywords = [question.topic, 'plan', 'jobs', 'economy', 'policy', 'reform', 'budget', 'schools', 'health'];
+  const keywordHits = keywords.reduce((sum, k) => sum + (text.includes(k) ? 1 : 0), 0);
+  const lengthScore = Math.min(25, Math.floor(text.split(/\s+/).filter(Boolean).length / 3));
+  const quality = clamp(20 + keywordHits * 8 + lengthScore + randomInt(-8, 9));
+  const confidence = clamp(30 + keywordHits * 7 + randomInt(-10, 11));
+  return { quality, confidence };
+};
+
+export const evaluateMediaRound = (state, payload) => {
+  const question = state.meta.pendingMediaQuestion;
+  if (!question) return { state, summary: null };
+
+  const ignored = payload?.ignored;
+  const answer = payload?.answer || '';
+  const playerScore = ignored ? 28 : scoreMediaAnswer(question, answer).quality;
+
+  const traits = state.opponent.traits || generateOpponentTraits();
+  const oppBase = Math.round((traits.mediaSkill * 0.45) + (traits.policyDepth * 0.35) + (traits.discipline * 0.2));
+  const oppositionScore = clamp(oppBase + randomInt(-10, 11));
+  const delta = Math.round((playerScore - oppositionScore) / 10);
+
+  const trustShift = ignored ? -Math.max(1, Math.round(question.intensity / 3)) : delta;
+  const momentumShift = ignored ? -Math.max(1, Math.round(question.intensity / 2.5)) : Math.round(delta * 1.1);
+
+  const nextState = {
+    ...state,
+    candidate: {
+      ...state.candidate,
+      mediaTrust: clamp(state.candidate.mediaTrust + trustShift),
+      momentum: clamp(state.candidate.momentum + momentumShift),
+    },
+    opponent: {
+      ...state.opponent,
+      mediaTrustGain: trustShift < 0 ? Math.abs(trustShift) : 0,
+      momentum: clamp(state.opponent.momentum + (oppositionScore > playerScore ? 2 : 0)),
+    },
+    meta: {
+      ...state.meta,
+      pendingMediaQuestion: null,
+      mediaHistory: [
+        ...(state.meta.mediaHistory || []),
+        {
+          week: question.week,
+          topic: question.topic,
+          question: question.question,
+          answer: ignored ? '[Ignored]' : answer,
+          playerScore,
+          oppositionScore,
+          trustShift,
+          momentumShift,
+        },
+      ].slice(-8),
+    },
+    log: [
+      ...state.log,
+      `🎙️ Media round (${question.topic}): you ${ignored ? 'ignored' : 'answered'}; impact ${momentumShift >= 0 ? '+' : ''}${momentumShift} momentum, ${trustShift >= 0 ? '+' : ''}${trustShift} trust.`,
+    ].slice(-80),
+  };
+
+  return {
+    state: nextState,
+    summary: {
+      question,
+      playerScore,
+      oppositionScore,
+      trustShift,
+      momentumShift,
+      oppositionResponse: `The ${state.opponent.party || 'opposition'} used a ${traits.style.toLowerCase()} answer emphasizing ${traits.policyDepth > 60 ? 'detailed policy execution' : 'simple attack messaging'}.`,
+    },
+  };
+};
+
+export const newGame = (countryName = 'United States', party = 'Independent', partyList = []) => {
   const country = getCountryProfile(countryName);
+  const opponentTraits = generateOpponentTraits();
   return {
     week: 1,
     totalWeeks: TOTAL_WEEKS,
     country,
     candidate: {
       name: 'Player Candidate',
+      party,
       funds: 250,
       momentum: 52,
       scandalRisk: 12,
@@ -69,6 +184,8 @@ export const newGame = (countryName = 'United States') => {
     },
     opponent: {
       name: 'Main Rival',
+      party: pickOpponentParty(party, partyList),
+      traits: opponentTraits,
       momentum: 50,
       fieldPower: 47,
       narrative: 50,
@@ -83,6 +200,8 @@ export const newGame = (countryName = 'United States') => {
       weeklyEvent: generateWeeklyWorldEvent(),
       strategistConfidence: 62,
       pendingEvent: null,
+      pendingMediaQuestion: null,
+      mediaHistory: [],
     },
     log: [`Campaign launched in ${country.name}.`],
     delayed: {},
@@ -239,7 +358,7 @@ const applyOppositionAction = (state, weeklyLog) => {
   };
 };
 
-export const proceedWeek = (state, selectedOptions) => {
+export const proceedWeek = (state, selectedOptions, mediaResponse = null) => {
   if (!selectedOptions.length) {
     return { ...state, log: [...state.log, 'No actions selected. Week cannot proceed.'].slice(-80) };
   }
@@ -251,6 +370,15 @@ export const proceedWeek = (state, selectedOptions) => {
     weeklyLog.push(`${option.icon} ${option.title} (${option.track})`);
     nextState = applySingleChoice(nextState, option, weeklyLog);
   });
+
+  if (nextState.meta.pendingMediaQuestion) {
+    const mediaOutcome = evaluateMediaRound(nextState, mediaResponse);
+    nextState = mediaOutcome.state;
+    if (mediaOutcome.summary) {
+      weeklyLog.push(`🎤 Media impact: ${mediaOutcome.summary.momentumShift >= 0 ? '+' : ''}${mediaOutcome.summary.momentumShift} momentum, ${mediaOutcome.summary.trustShift >= 0 ? '+' : ''}${mediaOutcome.summary.trustShift} trust.`);
+      weeklyLog.push(`🟥 Opposition response: ${mediaOutcome.summary.oppositionResponse}`);
+    }
+  }
 
   nextState = applyOppositionAction(nextState, weeklyLog);
 
@@ -278,6 +406,7 @@ export const proceedWeek = (state, selectedOptions) => {
 
   const narrativeDelta = selectedOptions.reduce((sum, o) => sum + o.effect.narrative, 0);
   const nextWeek = Math.min(state.totalWeeks + 1, state.week + 1);
+  const nextMediaQuestion = generateMediaQuestion({ ...nextState, week: nextWeek });
 
   const history = [...nextState.meta.actionHistory, {
     week: state.week,
@@ -297,6 +426,7 @@ export const proceedWeek = (state, selectedOptions) => {
       weeklyEvent: event,
       actionHistory: history,
       strategistConfidence: clamp(nextState.meta.strategistConfidence + randomInt(-7, 8)),
+      pendingMediaQuestion: nextMediaQuestion,
     },
     log: [...nextState.log, ...weeklyLog].slice(-80),
   };
@@ -337,6 +467,7 @@ export const getRules = (state) => [
   'Mix tracks: social media, field outreach, donor relations, policy messaging, coalitions, volunteer ops.',
   'Opposition acts every week and can target regions you ignore.',
   'Random world events can alter momentum and trust.',
+  'Some weeks trigger media questions. Answering well can improve trust and momentum.',
   `Reach target score (${state.country.targetScore}) by endgame to win.`,
 ];
 

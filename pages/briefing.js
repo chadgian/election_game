@@ -13,6 +13,7 @@ export default function BriefingPage() {
 
   const score = computeElectionScore(state);
   const lastHistory = state.meta.actionHistory?.[state.meta.actionHistory.length - 1];
+  const lastMedia = state.meta.mediaHistory?.[state.meta.mediaHistory.length - 1];
   const opp = state.opponent.currentPlan;
 
   return (
@@ -26,6 +27,8 @@ export default function BriefingPage() {
       <section className="layoutSingle">
         <section className="glass panel">
           <h2>Opposition Activity</h2>
+          <p><strong>Party:</strong> {state.opponent.party}</p>
+          <p><strong>Profile:</strong> {state.opponent.traits?.style} | Aggression {state.opponent.traits?.aggression} | Discipline {state.opponent.traits?.discipline}</p>
           {opp ? (
             <>
               <p><strong>Move:</strong> {opp.move}</p>
@@ -43,6 +46,20 @@ export default function BriefingPage() {
           <p><strong>National Pulse:</strong> {score.nationalPulse}%</p>
           <p><strong>Projected Score:</strong> You {score.player} - {score.opponent} Rival</p>
           <p><strong>Target:</strong> {score.target}</p>
+        </section>
+
+        <section className="glass panel">
+          <h2>Media Q&A Outcome</h2>
+          {lastMedia ? (
+            <>
+              <p><strong>Question:</strong> {lastMedia.question}</p>
+              <p><strong>Your response:</strong> {lastMedia.answer}</p>
+              <p><strong>AI Analysis:</strong> Your score {lastMedia.playerScore} vs Opposition {lastMedia.oppositionScore}</p>
+              <p><strong>Impact:</strong> {lastMedia.momentumShift >= 0 ? '+' : ''}{lastMedia.momentumShift} momentum, {lastMedia.trustShift >= 0 ? '+' : ''}{lastMedia.trustShift} media trust</p>
+            </>
+          ) : (
+            <p>No media question resolved yet.</p>
+          )}
         </section>
 
         <section className="glass panel">
