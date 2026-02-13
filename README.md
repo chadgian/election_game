@@ -1,40 +1,28 @@
-# Election Command (Node.js + Next.js)
+# Election Command (Next.js)
 
-A turn-based political strategy game inspired by the intensity of **The Political Machine**, **270**, and modern campaign war-room sims.
+Election Command is a mobile-friendly political strategy game with a war-room interface, animated game panels, operation cards, and country-aware election simulation.
 
-## Core game pillars
-- **Doctrine-based runs**: each campaign starts with a strategic archetype that changes your strengths/weaknesses.
-- **Operation card gameplay**: every week, pick one operation card from a tactical deck with different risk/cost profiles.
-- **Electoral theater map**: regions have EV value, volatility, turnout, heat, and field-office impact.
-- **Narrative warfare**: media control, momentum edge, and opponent pressure influence map projections.
-- **High-risk politics**: dark operations can spike gains but trigger delayed scandals and backlash.
-- **Campaign systems**: funds, field power, fatigue, alliance loyalty, ethics, and legal heat all matter.
+## What’s new
+- Full UI/UX rework into a game-style command console (not webpage-like).
+- Modular frontend architecture with reusable components (`src/components/*`).
+- Country selector with **USA default** and **global country roster**.
+- Detailed election setup for **United States** and **Philippines**, with generic simulation templates for all other countries.
+- Icons, animated transitions, risk-tagged operation cards, and mobile-first responsive layout.
 
-## Campaign Rules
-1. A full run lasts 10 weeks.
-2. You choose one operation card each week.
-3. Cards affect demographics, regions, and national systems.
-4. Reach **270+ Electoral Votes** by endgame to win.
-5. If you rely heavily on risky operations, expect delayed consequences.
+## Game loop
+1. Pick a country (USA default).
+2. Each week choose one operation card.
+3. Manage systems: momentum, trust, field power, narrative, scandal, energy.
+4. Capture enough regional points by endgame to win.
 
-## Local development
+## Run
 ```bash
 npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`
-
-## Production build
+## Build
 ```bash
 npm run build
 npm run start
 ```
-
-## Deploy to Vercel
-1. Push this repository to GitHub/GitLab/Bitbucket.
-2. Import it into Vercel.
-3. Vercel auto-detects Next.js.
-4. Deploy.
-
-Vercel settings are included via `vercel.json`.
