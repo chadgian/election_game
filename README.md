@@ -1,31 +1,33 @@
-# Election Game (React Native)
+# Election Game (Node.js + Next.js)
 
-A turn-based election simulation rebuilt in React Native for Android deployment.
+A turn-based election simulation web app, migrated to Node.js/Next.js for Vercel deployment.
 
-## What changed
-- Migrated from Jetpack Compose to a React Native application.
-- Ported the campaign simulation engine (10-week loop, demographics, ethics/scandal systems, delayed consequences) to JavaScript.
-- Kept Android packaging flow so you can export an installable debug APK.
+## Stack
+- Next.js 14
+- React 18
+- JavaScript simulation engine in `src/game/gameEngine.js`
 
-## Run locally
-1. Install Node.js 18+, JDK 17+, Android SDK, and Gradle (or generate Gradle wrapper).
-2. Install dependencies:
+## Local development
+1. Install dependencies:
    ```bash
    npm install
    ```
-3. Start Metro:
+2. Run dev server:
    ```bash
-   npm run start
+   npm run dev
    ```
-4. In another terminal, run on Android:
-   ```bash
-   npm run android
-   ```
+3. Open `http://localhost:3000`
 
-## APK export
+## Production build
 ```bash
-scripts/export_apk.sh
+npm run build
+npm run start
 ```
 
-Expected output:
-- `dist/election-game-debug.apk`
+## Deploy to Vercel
+1. Push this repository to GitHub/GitLab/Bitbucket.
+2. Import the repository in Vercel.
+3. Framework preset: **Next.js** (auto-detected).
+4. Deploy.
+
+Vercel settings are included via `vercel.json`.
