@@ -66,7 +66,9 @@
   padding: 8px 10px;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3);
   animation: floatin .35s ease;
+  overflow: hidden;
 }
+
 .analystBubble .avatar { font-size: 1.1rem; }
 .analystBubble strong { font-size: .84rem; color: #8ed0ff; }
 .analystBubble p { margin: 2px 0 0; font-size: .78rem; color: #d8e9ff; line-height: 1.28; }
@@ -85,3 +87,36 @@
 .tab.active { background:linear-gradient(90deg,#1d4ed8,#0ea5e9); color:white; }
 .layoutSingle { display:grid; gap:10px; }
 .planLink { display:block; text-align:center; text-decoration:none; }
+.mediaPanel { margin-bottom: 10px; }
+.mediaActions { display:flex; gap:14px; flex-wrap:wrap; margin: 8px 0; }
+.mediaInput {
+  width: 100%;
+  min-height: 110px;
+  border-radius: 10px;
+  border: 1px solid #48628f;
+  padding: 10px;
+  background: #101a2d;
+  color: #eaf2ff;
+}
+.analystHide {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  border: 0;
+  background: transparent;
+  color: #9ec5ff;
+  cursor: pointer;
+}
+.analystToggle {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 25;
+  border: 1px solid #3b82f6;
+  background: rgba(15, 30, 53, 0.95);
+  color: #d7ebff;
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.tutorialPanel h3 { margin: 14px 0 6px; }
