@@ -79,3 +79,9 @@
   .hudStats { text-align: left; }
   .regions { grid-template-columns: 1fr; }
 }
+
+.pageTabs { display:flex; gap:8px; padding:8px; margin-bottom:10px; overflow:auto; }
+.tab { text-decoration:none; color:#cde0ff; padding:8px 10px; border-radius:10px; border:1px solid #34517f; white-space:nowrap; }
+.tab.active { background:linear-gradient(90deg,#1d4ed8,#0ea5e9); color:white; }
+.layoutSingle { display:grid; gap:10px; }
+.planLink { display:block; text-align:center; text-decoration:none; }

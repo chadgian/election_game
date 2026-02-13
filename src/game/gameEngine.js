@@ -5,9 +5,12 @@ const contexts = ['Debate', 'Campaign Rally', 'Digital Push', 'Fundraising', 'Co
 const strategyTracks = ['Social Media', 'Field Outreach', 'Donor Relations', 'Policy Messaging', 'Coalition Building', 'Volunteer Ops'];
 const tones = ['principled', 'pragmatic', 'aggressive', 'visionary', 'populist'];
 const issues = ['economy', 'jobs', 'education', 'healthcare', 'security', 'infrastructure', 'corruption', 'climate', 'technology', 'cost of living'];
+const oppositionPlaybook = ['Negative Ads', 'Regional Rally', 'Debate Attack', 'Influencer Push', 'Policy Copycat', 'Ground Sweep'];
+const worldEvents = ['Fuel price spike', 'Breaking corruption leak', 'Major celebrity endorsement', 'Natural disaster response test', 'Unexpected economic report', 'Viral misinformation wave'];
 
 const clamp = (v) => Math.max(0, Math.min(100, Math.round(v)));
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min)) + min;
+const sample = (arr) => arr[randomInt(0, arr.length)];
 
 const buildDemographics = (country) => country.demographics.reduce((acc, name, i) => {
   const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
@@ -25,6 +28,26 @@ const buildRegions = (country) => country.regions.reduce((acc, r) => {
   };
   return acc;
 }, {});
+
+const generateOppositionPlan = (state) => {
+  const targetRegion = sample(state.country.regions);
+  const move = sample(oppositionPlaybook);
+  return {
+    move,
+    targetRegionId: targetRegion.id,
+    targetRegionName: targetRegion.name,
+    momentum: randomInt(1, 6),
+    narrative: randomInt(1, 5),
+    playerSupportPenalty: randomInt(1, 4),
+    mediaPenalty: randomInt(0, 4),
+  };
+};
+
+const generateWeeklyWorldEvent = () => ({
+  title: sample(worldEvents),
+  impact: randomInt(-3, 5),
+  trustShift: randomInt(-3, 4),
+});
 
 export const newGame = (countryName = 'United States') => {
   const country = getCountryProfile(countryName);
@@ -49,12 +72,17 @@ export const newGame = (countryName = 'United States') => {
       momentum: 50,
       fieldPower: 47,
       narrative: 50,
+      currentPlan: null,
     },
     meta: {
       narrative: 50,
       operationPoints: 3,
       maxActionsPerWeek: 3,
       mission: `Win ${country.electionType} in ${country.name}`,
+      actionHistory: [],
+      weeklyEvent: generateWeeklyWorldEvent(),
+      strategistConfidence: 62,
+      pendingEvent: null,
     },
     log: [`Campaign launched in ${country.name}.`],
     delayed: {},
@@ -180,9 +208,40 @@ const applySingleChoice = (state, option, weeklyLog) => {
   };
 };
 
+const applyOppositionAction = (state, weeklyLog) => {
+  const plan = generateOppositionPlan(state);
+  const regions = { ...state.candidate.regions };
+  const target = regions[plan.targetRegionId];
+
+  if (target) {
+    regions[plan.targetRegionId] = {
+      ...target,
+      playerSupport: clamp(target.playerSupport - plan.playerSupportPenalty - randomInt(0, 2)),
+      heat: clamp(target.heat + randomInt(2, 8)),
+    };
+  }
+
+  weeklyLog.push(`🟥 Opposition move: ${plan.move} in ${plan.targetRegionName}.`);
+
+  return {
+    ...state,
+    candidate: {
+      ...state.candidate,
+      regions,
+      mediaTrust: clamp(state.candidate.mediaTrust - plan.mediaPenalty),
+    },
+    opponent: {
+      ...state.opponent,
+      momentum: clamp(state.opponent.momentum + plan.momentum),
+      narrative: clamp(state.opponent.narrative + plan.narrative),
+      currentPlan: plan,
+    },
+  };
+};
+
 export const proceedWeek = (state, selectedOptions) => {
   if (!selectedOptions.length) {
-    return { ...state, log: [...state.log, 'No actions selected. Week cannot proceed.'].slice(-60) };
+    return { ...state, log: [...state.log, 'No actions selected. Week cannot proceed.'].slice(-80) };
   }
 
   let nextState = { ...state };
@@ -192,6 +251,8 @@ export const proceedWeek = (state, selectedOptions) => {
     weeklyLog.push(`${option.icon} ${option.title} (${option.track})`);
     nextState = applySingleChoice(nextState, option, weeklyLog);
   });
+
+  nextState = applyOppositionAction(nextState, weeklyLog);
 
   const delayed = { ...nextState.delayed };
   let candidate = { ...nextState.candidate };
@@ -207,28 +268,37 @@ export const proceedWeek = (state, selectedOptions) => {
   });
   delete delayed[state.week + 1];
 
-  const opponent = {
-    ...nextState.opponent,
-    momentum: clamp(nextState.opponent.momentum + randomInt(-4, 6) + selectedOptions.filter((o) => o.unethical).length),
-    fieldPower: clamp(nextState.opponent.fieldPower + randomInt(-2, 4)),
-    narrative: clamp(nextState.opponent.narrative + randomInt(-3, 5)),
+  const event = generateWeeklyWorldEvent();
+  candidate = {
+    ...candidate,
+    momentum: clamp(candidate.momentum + event.impact),
+    mediaTrust: clamp(candidate.mediaTrust + event.trustShift),
   };
+  weeklyLog.push(`🌐 Weekly event: ${event.title} (${event.impact >= 0 ? '+' : ''}${event.impact} momentum).`);
 
   const narrativeDelta = selectedOptions.reduce((sum, o) => sum + o.effect.narrative, 0);
   const nextWeek = Math.min(state.totalWeeks + 1, state.week + 1);
+
+  const history = [...nextState.meta.actionHistory, {
+    week: state.week,
+    tracks: selectedOptions.map((o) => o.track),
+    dark: selectedOptions.filter((o) => o.unethical).length,
+  }].slice(-6);
 
   return {
     ...nextState,
     week: nextWeek,
     candidate,
-    opponent,
     delayed,
     meta: {
       ...nextState.meta,
       narrative: clamp(nextState.meta.narrative + narrativeDelta),
       operationPoints: nextState.meta.maxActionsPerWeek,
+      weeklyEvent: event,
+      actionHistory: history,
+      strategistConfidence: clamp(nextState.meta.strategistConfidence + randomInt(-7, 8)),
     },
-    log: [...nextState.log, ...weeklyLog].slice(-60),
+    log: [...nextState.log, ...weeklyLog].slice(-80),
   };
 };
 
@@ -237,50 +307,80 @@ export const isFinished = (state) => state.week > state.totalWeeks;
 export const computeElectionScore = (state) => {
   const regions = Object.values(state.candidate.regions);
   const total = regions.reduce((s, r) => s + r.points, 0);
-  const player = regions.reduce((sum, r) => {
-    const projected = r.playerSupport + (state.candidate.momentum - state.opponent.momentum) * 0.1 + (state.meta.narrative - state.opponent.narrative) * 0.08;
-    return projected >= 50 ? sum + r.points : sum;
-  }, 0);
-  return { player, opponent: total - player, total, target: state.country.targetScore };
+
+  let playerProjection = 0;
+  regions.forEach((r) => {
+    const projected = r.playerSupport +
+      (state.candidate.momentum - state.opponent.momentum) * 0.16 +
+      (state.meta.narrative - state.opponent.narrative) * 0.14 +
+      (state.candidate.fieldPower - state.opponent.fieldPower) * 0.1 +
+      (r.fieldOffices - 1) * 0.8;
+    if (projected >= 50) playerProjection += r.points;
+  });
+
+  const opponentProjection = total - playerProjection;
+
+  // extra moving metric to avoid perceived stagnation late-game
+  const nationalPulse = clamp(
+    50 +
+      (state.candidate.momentum - state.opponent.momentum) * 0.35 +
+      (state.meta.narrative - state.opponent.narrative) * 0.25 +
+      (state.candidate.fieldPower - state.opponent.fieldPower) * 0.2,
+  );
+
+  return { player: playerProjection, opponent: opponentProjection, total, target: state.country.targetScore, nationalPulse };
 };
 
 export const getRules = (state) => [
   `Default country is ${state.country.name}; you can switch country and start a new run.`,
   `Plan up to ${state.meta.maxActionsPerWeek} actions each week, then click Proceed Week.`,
-  'Mix strategy tracks: social media, field outreach, donor relations, policy messaging, coalitions, volunteers.',
-  'Risky tactics can trigger delayed scandals.',
+  'Mix tracks: social media, field outreach, donor relations, policy messaging, coalitions, volunteer ops.',
+  'Opposition acts every week and can target regions you ignore.',
+  'Random world events can alter momentum and trust.',
   `Reach target score (${state.country.targetScore}) by endgame to win.`,
 ];
 
 export const getAnalystTip = (state, event, selectedOptions) => {
   const score = computeElectionScore(state);
-  const behind = score.player < score.target;
+  const history = state.meta.actionHistory || [];
+  const recentTracks = history.flatMap((h) => h.tracks || []);
+  const repeatedDigital = recentTracks.filter((t) => t === 'Social Media').length >= 3;
   const hasField = selectedOptions.some((o) => o.track === 'Field Outreach');
   const hasDigital = selectedOptions.some((o) => o.track === 'Social Media');
   const darkCount = selectedOptions.filter((o) => o.unethical).length;
 
-  if (!selectedOptions.length) {
-    return 'Analyst: Build a balanced week plan—start with one outreach or policy action before proceeding.';
+  const suggestions = [];
+
+  if (!selectedOptions.length) suggestions.push('Build a balanced week plan—start with one outreach or policy action.');
+  if (darkCount >= 2) suggestions.push('Too many dark tactics this week. Add at least one trust-building action.');
+  if (score.player < score.target && !hasField) suggestions.push('You are below target pace. Add a Field Outreach action for turnout.');
+  if (state.candidate.mediaTrust < 45 && !hasDigital) suggestions.push('Media trust is low. Include Social Media or Policy Messaging.');
+  if (repeatedDigital) suggestions.push('You are overusing digital plays lately. Pivot to ground or coalition actions.');
+  if (event?.context === 'Fundraising') suggestions.push('Pair fundraising with coalition or policy messaging to avoid donor-only optics.');
+
+  if (!suggestions.length) suggestions.push('Good mix. Proceed this week if your action costs and risks look acceptable.');
+
+  // analyst is imperfect: sometimes gives noisy/partly wrong advice
+  const errorChance = Math.max(8, 35 - Math.floor(state.meta.strategistConfidence / 3));
+  if (randomInt(0, 100) < errorChance) {
+    return `Analyst (uncertain): ${sample(['Double down on aggressive attacks this week.', 'Ignore field outreach this turn.', 'You can safely stack dark tactics.'])}`;
   }
-  if (darkCount >= 2) {
-    return 'Analyst: Too many dark tactics this week. Add at least one trust-building action to avoid backlash.';
-  }
-  if (behind && !hasField) {
-    return 'Analyst: You are below target pace. Add a Field Outreach action to improve turnout in key regions.';
-  }
-  if (state.candidate.mediaTrust < 45 && !hasDigital) {
-    return 'Analyst: Media trust is low. Include a Social Media or Policy Messaging action this week.';
-  }
-  if (event.context === 'Fundraising') {
-    return 'Analyst: Pair fundraising with coalition or policy messaging to avoid donor-only optics.';
-  }
-  return 'Analyst: Good mix. Proceed this week if your action costs and risks look acceptable.';
+
+  return `Analyst: ${suggestions[0]}`;
 };
 
 export const resultSummary = (state) => {
   const score = computeElectionScore(state);
   const demoScore = Object.values(state.candidate.demographics).reduce((s, d) => s + d.support * 0.1 + d.loyalty * 0.05, 0);
-  const final = Math.round(demoScore + state.candidate.momentum + state.candidate.fieldPower + state.meta.narrative - state.candidate.scandalRisk + (score.player - score.opponent) * 0.3);
+  const final = Math.round(
+    demoScore +
+      state.candidate.momentum +
+      state.candidate.fieldPower +
+      state.meta.narrative +
+      score.nationalPulse * 0.4 -
+      state.candidate.scandalRisk +
+      (score.player - score.opponent) * 0.3,
+  );
   const verdict = score.player >= score.target ? 'Victory' : 'Defeat';
-  return `${verdict} • ${state.country.name} ${score.player}-${score.opponent} • Target ${score.target} • Final Score ${final}`;
+  return `${verdict} • ${state.country.name} ${score.player}-${score.opponent} • Pulse ${score.nationalPulse} • Final Score ${final}`;
 };

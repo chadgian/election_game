@@ -1,58 +1,40 @@
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import CountrySelector from '../src/components/CountrySelector';
 import GameHUD from '../src/components/GameHUD';
 import MapBoard from '../src/components/MapBoard';
-import OperationDeck from '../src/components/OperationDeck';
 import AnalystBubble from '../src/components/AnalystBubble';
 import { DemographicsPanel, FeedPanel, SystemsPanel } from '../src/components/SidePanels';
-import {
-  computeElectionScore,
-  generateWeeklyEvent,
-  getAnalystTip,
-  getRules,
-  isFinished,
-  newGame,
-  proceedWeek,
-  resultSummary,
-} from '../src/game/gameEngine';
+import { computeElectionScore, generateWeeklyEvent, getAnalystTip, getRules, isFinished, newGame, resultSummary } from '../src/game/gameEngine';
+import { loadGameState, saveGameState } from '../src/game/session';
 
-export default function Home() {
+export default function HQPage() {
   const [selectedCountry, setSelectedCountry] = useState('United States');
   const [state, setState] = useState(() => newGame('United States'));
   const [event, setEvent] = useState(() => generateWeeklyEvent(state));
-  const [selectedOptions, setSelectedOptions] = useState([]);
+
+  useEffect(() => {
+    const stored = loadGameState();
+    if (stored) {
+      setState(stored);
+      setSelectedCountry(stored.country?.name || 'United States');
+      setEvent(generateWeeklyEvent(stored));
+    }
+  }, []);
+
+  useEffect(() => {
+    saveGameState(state);
+  }, [state]);
 
   const score = useMemo(() => computeElectionScore(state), [state]);
   const rules = useMemo(() => getRules(state), [state]);
-  const analystTip = useMemo(() => getAnalystTip(state, event, selectedOptions), [state, event, selectedOptions]);
-
-  useEffect(() => {
-    if (!isFinished(state)) {
-      setEvent(generateWeeklyEvent(state));
-      setSelectedOptions([]);
-    }
-  }, [state.week, selectedCountry]);
+  const analystTip = useMemo(() => getAnalystTip(state, event, []), [state, event]);
 
   const handleCountryChange = (country) => {
     const next = newGame(country);
     setSelectedCountry(country);
     setState(next);
     setEvent(generateWeeklyEvent(next));
-    setSelectedOptions([]);
-  };
-
-  const toggleOption = (option) => {
-    const exists = selectedOptions.some((item) => item.id === option.id);
-    if (exists) {
-      setSelectedOptions(selectedOptions.filter((item) => item.id !== option.id));
-      return;
-    }
-    if (selectedOptions.length >= state.meta.maxActionsPerWeek) return;
-    setSelectedOptions([...selectedOptions, option]);
-  };
-
-  const handleProceedWeek = () => {
-    setState((prev) => proceedWeek(prev, selectedOptions));
   };
 
   return (
@@ -60,6 +42,12 @@ export default function Home() {
       {!isFinished(state) ? <AnalystBubble tip={analystTip} /> : null}
       <GameHUD state={state} score={score} />
       <CountrySelector currentCountry={selectedCountry} onSelect={handleCountryChange} />
+
+      <section className="glass pageTabs">
+        <Link href="/" className="tab active">🏛️ HQ</Link>
+        <Link href="/planning" className="tab">🗓️ Weekly Planning</Link>
+        <Link href="/briefing" className="tab">🧾 Opposition Briefing</Link>
+      </section>
 
       {isFinished(state) ? (
         <section className="glass final">
@@ -69,7 +57,6 @@ export default function Home() {
             const next = newGame(selectedCountry);
             setState(next);
             setEvent(generateWeeklyEvent(next));
-            setSelectedOptions([]);
           }}>
             Play Again
           </button>
@@ -82,13 +69,13 @@ export default function Home() {
           </div>
           <MapBoard state={state} score={score} />
           <div>
-            <OperationDeck
-              event={event}
-              selectedOptions={selectedOptions}
-              onToggleOption={toggleOption}
-              onProceed={handleProceedWeek}
-              remainingActions={state.meta.maxActionsPerWeek - selectedOptions.length}
-            />
+            <section className="glass panel">
+              <h2>🧭 Week {state.week} Brief</h2>
+              <p><strong>Current Event:</strong> {state.meta.weeklyEvent.title}</p>
+              <p><strong>Opposition plan:</strong> {state.opponent.currentPlan ? `${state.opponent.currentPlan.move} targeting ${state.opponent.currentPlan.targetRegionName}` : 'No confirmed intel yet.'}</p>
+              <p><strong>National Pulse:</strong> {score.nationalPulse}%</p>
+              <Link href="/planning" className="proceedBtn planLink">Go to Planning Page ▶</Link>
+            </section>
             <FeedPanel state={state} rules={rules} />
           </div>
         </section>
