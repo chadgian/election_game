@@ -13,6 +13,7 @@ export default function HQPage() {
   const [partyOptions, setPartyOptions] = useState(['Independent']);
   const [selectedParty, setSelectedParty] = useState('Independent');
   const [partySource, setPartySource] = useState('loading');
+  const [isHydrated, setIsHydrated] = useState(false);
   const [state, setState] = useState(() => newGame('United States', 'Independent', ['Independent']));
   const [event, setEvent] = useState(() => generateWeeklyEvent(state));
 
@@ -50,16 +51,19 @@ export default function HQPage() {
         setState(hydrated);
         setSelectedCountry(country);
         setEvent(generateWeeklyEvent(hydrated));
+        setIsHydrated(true);
         return;
       }
       await loadParties('United States', 'Independent');
+      setIsHydrated(true);
     };
     boot();
   }, []);
 
   useEffect(() => {
+    if (!isHydrated) return;
     saveGameState(state);
-  }, [state]);
+  }, [state, isHydrated]);
 
   const score = useMemo(() => computeElectionScore(state), [state]);
   const rules = useMemo(() => getRules(state), [state]);
