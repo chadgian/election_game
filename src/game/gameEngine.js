@@ -7,12 +7,15 @@ const tones = ['principled', 'pragmatic', 'aggressive', 'visionary', 'populist']
 const issues = ['economy', 'jobs', 'education', 'healthcare', 'security', 'infrastructure', 'corruption', 'climate', 'technology', 'cost of living'];
 const oppositionPlaybook = ['Negative Ads', 'Regional Rally', 'Debate Attack', 'Influencer Push', 'Policy Copycat', 'Ground Sweep'];
 const worldEvents = ['Fuel price spike', 'Breaking corruption leak', 'Major celebrity endorsement', 'Natural disaster response test', 'Unexpected economic report', 'Viral misinformation wave'];
-const mediaQuestionBank = [
-  { topic: 'economy', question: 'Inflation is climbing. What is your immediate plan to protect household purchasing power?', intensity: 6 },
-  { topic: 'jobs', question: 'Layoffs rose this month. How will your campaign protect workers and small businesses?', intensity: 5 },
-  { topic: 'corruption', question: 'A corruption exposé is trending. What reforms would your administration deliver in the first 100 days?', intensity: 7 },
-  { topic: 'security', question: 'Security concerns are rising in key regions. What concrete action would you prioritize?', intensity: 6 },
-  { topic: 'climate', question: 'A recent climate disaster exposed weak preparedness. How will you improve resilience?', intensity: 5 },
+const mediaQuestionTopics = [
+  { topic: 'economy', intensity: 6 },
+  { topic: 'jobs', intensity: 5 },
+  { topic: 'corruption', intensity: 7 },
+  { topic: 'security', intensity: 6 },
+  { topic: 'climate', intensity: 5 },
+  { topic: 'healthcare', intensity: 5 },
+  { topic: 'education', intensity: 4 },
+  { topic: 'cost of living', intensity: 6 },
 ];
 const oppositionArchetypes = ['Populist Nationalist', 'Technocratic Reformer', 'Traditional Conservative', 'Grassroots Progressive', 'Media Savvy Centrist'];
 
@@ -33,16 +36,78 @@ const pickOpponentParty = (playerParty, partyList = []) => {
   return filtered.length ? filtered[randomInt(0, filtered.length)] : 'National Opposition Coalition';
 };
 
+const buildMediaQuestionText = (topic, state) => {
+  const region = sample(state.country.regions || []).name || 'key regions';
+  const demographic = sample(state.country.demographics || ['swing voters']);
+  const context = state.meta.weeklyEvent?.title || 'national uncertainty';
+  const pressure = sample(['in the next 30 days', 'before election day', 'starting this week', 'within your first 100 days']);
+  const metric = sample(['public trust', 'consumer confidence', 'small-business sentiment', 'national stability', 'voter turnout']);
+  const framing = sample([
+    `After the ${context.toLowerCase()},`,
+    `Given rising concern in ${region},`,
+    `With ${demographic.toLowerCase()} asking for clarity,`,
+    'As voters demand specifics,',
+  ]);
+
+  const topicPrompts = {
+    economy: [
+      `${framing} what exact fiscal action will you prioritize ${pressure} to stabilize prices and protect wages?`,
+      `${framing} how will your economic team respond if growth slows while inflation remains high?`,
+      `${framing} which two budget changes would you implement first to improve household purchasing power?`,
+    ],
+    jobs: [
+      `${framing} what is your immediate plan ${pressure} to prevent more layoffs and protect local employers?`,
+      `${framing} how would your administration create higher-quality jobs rather than temporary hiring spikes?`,
+      `${framing} what labor-market reform will you launch first and how will you measure results?`,
+    ],
+    corruption: [
+      `${framing} which anti-corruption reform will you pass first, and how will you enforce it transparently?`,
+      `${framing} how will you stop political favoritism in public contracts ${pressure}?`,
+      `${framing} what accountability mechanism will you use so voters can track corruption cases in real time?`,
+    ],
+    security: [
+      `${framing} what concrete security step will you execute first to reduce risk in ${region}?`,
+      `${framing} how will you balance civil liberties with stronger public safety operations?`,
+      `${framing} what is your crisis command strategy if a major security incident happens ${pressure}?`,
+    ],
+    climate: [
+      `${framing} what resilience project will you fund first to protect vulnerable communities ${pressure}?`,
+      `${framing} how will you handle the economic cost of climate adaptation while keeping services reliable?`,
+      `${framing} what climate action can deliver measurable local impact before voters return to the polls?`,
+    ],
+    healthcare: [
+      `${framing} what healthcare reform will you prioritize first to lower costs and improve access?`,
+      `${framing} how will you prevent hospital overload during sudden public-health shocks?`,
+      `${framing} which healthcare service will your government expand first, and how will you fund it?`,
+    ],
+    education: [
+      `${framing} what education policy will you deploy first to improve learning outcomes in ${region}?`,
+      `${framing} how will your administration close learning gaps affecting ${demographic.toLowerCase()}?`,
+      `${framing} what is your near-term plan to raise teacher support and school performance?`,
+    ],
+    'cost of living': [
+      `${framing} families say daily expenses are unmanageable—what relief measure begins ${pressure}?`,
+      `${framing} what policy mix will lower housing, transport, and food pressure without hurting jobs?`,
+      `${framing} which affordability indicator will your cabinet target first: ${metric} or inflation?`,
+    ],
+  };
+
+  return sample(topicPrompts[topic] || topicPrompts.economy);
+};
+
 const generateMediaQuestion = (state) => {
   if (state.week <= 1 || state.week > state.totalWeeks) return null;
   if (Math.random() < 0.5) return null;
-  const base = sample(mediaQuestionBank);
+
+  const base = sample(mediaQuestionTopics);
+  const variation = randomInt(1000, 9999);
+
   return {
-    id: `media_${state.week}_${base.topic}`,
+    id: `media_${state.week}_${base.topic}_${variation}`,
     topic: base.topic,
     week: state.week,
-    intensity: base.intensity,
-    question: base.question,
+    intensity: clamp(base.intensity + randomInt(-1, 2)),
+    question: buildMediaQuestionText(base.topic, state),
     contextHint: state.meta.weeklyEvent?.title || 'General voter anxiety',
   };
 };
