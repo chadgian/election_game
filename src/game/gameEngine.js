@@ -98,18 +98,84 @@ const scoreMediaAnswer = (question, answer) => {
   return { quality, confidence };
 };
 
-const buildOppositionMediaAnswer = (question, traits) => {
-  const styles = {
-    'Populist Nationalist': `Families are paying the price on ${question.topic}; we will act now and put citizens first.`,
-    'Technocratic Reformer': `Our ${question.topic} response uses measurable targets, budget discipline, and independent monitoring.`,
-    'Traditional Conservative': `We will restore order on ${question.topic} with fiscal restraint and accountable leadership.`,
-    'Grassroots Progressive': `On ${question.topic}, we will invest in communities and protect vulnerable groups immediately.`,
-    'Media Savvy Centrist': `Voters want practical answers on ${question.topic}; we offer a balanced plan that can pass now.`,
+const buildOppositionMediaAnswer = (question, traits, state, oppositionScore) => {
+  const styleOpeners = {
+    'Populist Nationalist': [
+      `Families are paying the price on ${question.topic}; we will act now and put citizens first.`,
+      `The political elite failed on ${question.topic}; our movement will put ordinary citizens back in control.`,
+      `People are tired of excuses on ${question.topic}; we will deliver immediate relief where it hurts most.`,
+    ],
+    'Technocratic Reformer': [
+      `Our ${question.topic} response uses measurable targets, budget discipline, and independent monitoring.`,
+      `We will handle ${question.topic} with evidence-based policy, public dashboards, and strict implementation milestones.`,
+      `On ${question.topic}, our plan is technical, costed, and benchmarked against successful international models.`,
+    ],
+    'Traditional Conservative': [
+      `We will restore order on ${question.topic} with fiscal restraint and accountable leadership.`,
+      `Stability on ${question.topic} starts with responsible governance, safer communities, and disciplined spending.`,
+      `Our approach to ${question.topic} protects institutions, rewards hard work, and restores public confidence.`,
+    ],
+    'Grassroots Progressive': [
+      `On ${question.topic}, we will invest in communities and protect vulnerable groups immediately.`,
+      `We will tackle ${question.topic} through people-first reforms, stronger public services, and fair opportunity.`,
+      `Communities hit hardest by ${question.topic} deserve urgent support, and our platform funds that directly.`,
+    ],
+    'Media Savvy Centrist': [
+      `Voters want practical answers on ${question.topic}; we offer a balanced plan that can pass now.`,
+      `On ${question.topic}, we reject extremes and focus on pragmatic steps that produce visible results quickly.`,
+      `Our ${question.topic} strategy is realistic, bipartisan, and designed for immediate implementation.`,
+    ],
   };
-  const detail = traits.policyDepth > 60
-    ? ' This includes a phased policy rollout with transparent performance reporting.'
-    : ' The focus is a clear message and fast execution.';
-  return `${styles[traits.style] || styles['Media Savvy Centrist']}${detail}`;
+
+  const contextLine = state.meta.weeklyEvent?.title
+    ? sample([
+      `Given this week's ${state.meta.weeklyEvent.title.toLowerCase()}, leadership must stay calm and decisive.`,
+      `After the ${state.meta.weeklyEvent.title.toLowerCase()}, voters deserve a plan with clear accountability.`,
+      `The ${state.meta.weeklyEvent.title.toLowerCase()} proves why ${question.topic} cannot be handled with slogans.`,
+    ])
+    : sample([
+      `This is not the week for political theater on ${question.topic}.`,
+      `The country needs execution, not talking points, on ${question.topic}.`,
+      `Voters are watching who can actually deliver on ${question.topic}.`,
+    ]);
+
+  const momentumGap = state.opponent.momentum - state.candidate.momentum;
+  const stanceLine = momentumGap >= 0
+    ? sample([
+      'We are expanding this message across key regions because it is working.',
+      'Our campaign momentum shows that voters are already responding to this plan.',
+      'The public is rewarding this direction, and we will keep pressing forward.',
+    ])
+    : sample([
+      'We will sharpen our message and engage undecided voters directly in the coming week.',
+      'This week we will reinforce our ground operation so this plan reaches every community.',
+      'We know trust must be earned daily, and we will prove this policy can be executed.',
+    ]);
+
+  const depthLine = traits.policyDepth > 60
+    ? sample([
+      'We will publish monthly performance reports and independent audits.',
+      'Implementation will follow a phased roadmap with measurable targets.',
+      'Each action item will be tied to transparent budget and delivery timelines.',
+    ])
+    : sample([
+      'The focus is clear communication and rapid execution on day one.',
+      'People want action quickly, and that is exactly what we will deliver first.',
+      'We will keep this plan straightforward, visible, and easy to track.',
+    ]);
+
+  const confidenceLine = oppositionScore >= 70
+    ? sample([
+      'This is the leadership standard voters expect right now.',
+      'This is a serious plan for a serious moment.',
+    ])
+    : sample([
+      'We know this challenge is difficult, but we have a workable path forward.',
+      'No plan is perfect, but this one is realistic and immediately actionable.',
+    ]);
+
+  const openerPool = styleOpeners[traits.style] || styleOpeners['Media Savvy Centrist'];
+  return `${sample(openerPool)} ${contextLine} ${stanceLine} ${depthLine} ${confidenceLine}`;
 };
 
 export const evaluateMediaRound = (state, payload) => {
@@ -123,7 +189,7 @@ export const evaluateMediaRound = (state, payload) => {
   const traits = state.opponent.traits || generateOpponentTraits();
   const oppBase = Math.round((traits.mediaSkill * 0.45) + (traits.policyDepth * 0.35) + (traits.discipline * 0.2));
   const oppositionScore = clamp(oppBase + randomInt(-10, 11));
-  const oppositionAnswer = buildOppositionMediaAnswer(question, traits);
+  const oppositionAnswer = buildOppositionMediaAnswer(question, traits, state, oppositionScore);
   const delta = Math.round((playerScore - oppositionScore) / 10);
 
   const trustShift = ignored ? -Math.max(1, Math.round(question.intensity / 3)) : delta;
