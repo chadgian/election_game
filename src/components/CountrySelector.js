@@ -1,15 +1,25 @@
 import { WORLD_COUNTRIES } from '../data/countries';
 
-export default function CountrySelector({ currentCountry, onSelect }) {
+export default function CountrySelector({ currentCountry, onSelectCountry, parties = [], selectedParty, onSelectParty, partySource }) {
   return (
     <div className="glass countryBar">
       <label htmlFor="country">🌐 Country</label>
-      <select id="country" value={currentCountry} onChange={(e) => onSelect(e.target.value)}>
+      <select id="country" value={currentCountry} onChange={(e) => onSelectCountry(e.target.value)}>
         {WORLD_COUNTRIES.map((country) => (
           <option key={country} value={country}>{country}</option>
         ))}
       </select>
-      <small>Changing country starts a new campaign run with country-specific setup.</small>
+
+      <label htmlFor="party">🏷️ Political Party</label>
+      <select id="party" value={selectedParty} onChange={(e) => onSelectParty(e.target.value)}>
+        {parties.map((party) => (
+          <option key={party} value={party}>{party}</option>
+        ))}
+      </select>
+
+      <small>
+        Select country and party before starting a campaign. Party source: {partySource}.
+      </small>
     </div>
   );
 }

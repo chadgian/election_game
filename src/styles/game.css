@@ -85,3 +85,14 @@
 .tab.active { background:linear-gradient(90deg,#1d4ed8,#0ea5e9); color:white; }
 .layoutSingle { display:grid; gap:10px; }
 .planLink { display:block; text-align:center; text-decoration:none; }
+.mediaPanel { margin-bottom: 10px; }
+.mediaActions { display:flex; gap:14px; flex-wrap:wrap; margin: 8px 0; }
+.mediaInput {
+  width: 100%;
+  min-height: 110px;
+  border-radius: 10px;
+  border: 1px solid #48628f;
+  padding: 10px;
+  background: #101a2d;
+  color: #eaf2ff;
+}
