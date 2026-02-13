@@ -37,27 +37,42 @@ export default function HQPage() {
   };
 
   useEffect(() => {
+    let active = true;
+
     const boot = async () => {
       const stored = loadGameState();
       if (stored) {
-        const party = stored.candidate?.party || 'Independent';
         const country = stored.country?.name || 'United States';
-        const loaded = await loadParties(country, party);
-        const hydrated = {
-          ...stored,
-          candidate: { ...stored.candidate, party: loaded.nextParty },
-          opponent: { ...stored.opponent, party: stored.opponent?.party || loaded.options.find((p) => p !== loaded.nextParty) || 'National Opposition Coalition' },
-        };
-        setState(hydrated);
+        const party = stored.candidate?.party || 'Independent';
+
+        setState(stored);
         setSelectedCountry(country);
-        setEvent(generateWeeklyEvent(hydrated));
+        setSelectedParty(party);
+        setEvent(generateWeeklyEvent(stored));
         setIsHydrated(true);
+
+        const loaded = await loadParties(country, party);
+        if (!active) return;
+
+        setState((prev) => ({
+          ...prev,
+          candidate: { ...prev.candidate, party: loaded.nextParty },
+          opponent: {
+            ...prev.opponent,
+            party: prev.opponent?.party || loaded.options.find((p) => p !== loaded.nextParty) || 'National Opposition Coalition',
+          },
+        }));
         return;
       }
+
       await loadParties('United States', 'Independent');
-      setIsHydrated(true);
+      if (active) setIsHydrated(true);
     };
+
     boot();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
