@@ -1,11 +1,14 @@
 # Election Game (Node.js + Next.js)
 
-A turn-based election simulation web app, migrated to Node.js/Next.js for Vercel deployment.
+A turn-based election simulation web app inspired by **The Political Machine** and **270-style electoral strategy**.
 
-## Stack
-- Next.js 14
-- React 18
-- JavaScript simulation engine in `src/game/gameEngine.js`
+## Gameplay highlights
+- 10-week campaign with high-stakes weekly decisions.
+- 50-option contextual strategy pools (3–5 shown each week).
+- Electoral map projection with regional EV control and momentum-adjusted support.
+- Demographic sentiment and loyalty tracking.
+- Opponent momentum pressure, scandals, legal heat, alliances, and delayed consequence chains.
+- Endgame result based on EV projection + campaign fundamentals.
 
 ## Local development
 1. Install dependencies:
