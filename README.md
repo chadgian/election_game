@@ -1,25 +1,29 @@
-# Election Game (Node.js + Next.js)
+# Election Command (Node.js + Next.js)
 
-A turn-based election simulation web app inspired by **The Political Machine** and **270-style electoral strategy**.
+A turn-based political strategy game inspired by the intensity of **The Political Machine**, **270**, and modern campaign war-room sims.
 
-## Gameplay highlights
-- 10-week campaign with high-stakes weekly decisions.
-- 50-option contextual strategy pools (3–5 shown each week).
-- Electoral map projection with regional EV control and momentum-adjusted support.
-- Demographic sentiment and loyalty tracking.
-- Opponent momentum pressure, scandals, legal heat, alliances, and delayed consequence chains.
-- Endgame result based on EV projection + campaign fundamentals.
+## Core game pillars
+- **Doctrine-based runs**: each campaign starts with a strategic archetype that changes your strengths/weaknesses.
+- **Operation card gameplay**: every week, pick one operation card from a tactical deck with different risk/cost profiles.
+- **Electoral theater map**: regions have EV value, volatility, turnout, heat, and field-office impact.
+- **Narrative warfare**: media control, momentum edge, and opponent pressure influence map projections.
+- **High-risk politics**: dark operations can spike gains but trigger delayed scandals and backlash.
+- **Campaign systems**: funds, field power, fatigue, alliance loyalty, ethics, and legal heat all matter.
+
+## Campaign Rules
+1. A full run lasts 10 weeks.
+2. You choose one operation card each week.
+3. Cards affect demographics, regions, and national systems.
+4. Reach **270+ Electoral Votes** by endgame to win.
+5. If you rely heavily on risky operations, expect delayed consequences.
 
 ## Local development
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Run dev server:
-   ```bash
-   npm run dev
-   ```
-3. Open `http://localhost:3000`
+```bash
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`
 
 ## Production build
 ```bash
@@ -29,8 +33,8 @@ npm run start
 
 ## Deploy to Vercel
 1. Push this repository to GitHub/GitLab/Bitbucket.
-2. Import the repository in Vercel.
-3. Framework preset: **Next.js** (auto-detected).
+2. Import it into Vercel.
+3. Vercel auto-detects Next.js.
 4. Deploy.
 
 Vercel settings are included via `vercel.json`.
