@@ -13,6 +13,9 @@ export default function PlanningPage() {
   const [selectedOptions, setSelectedOptions] = useState([]);
   const [mediaChoice, setMediaChoice] = useState('answer');
   const [mediaAnswer, setMediaAnswer] = useState('');
+  const [focusRegionId, setFocusRegionId] = useState('');
+  const [takeTvShow, setTakeTvShow] = useState(false);
+  const [rallyGuests, setRallyGuests] = useState([]);
 
   useEffect(() => {
     const stored = loadGameState();
@@ -26,6 +29,13 @@ export default function PlanningPage() {
   const analystTip = useMemo(() => getAnalystTip(state, event, selectedOptions), [state, event, selectedOptions]);
   const pendingMediaQuestion = state.meta.pendingMediaQuestion;
 
+  const toggleRallyGuest = (guest) => {
+    const exists = rallyGuests.includes(guest);
+    if (exists) return setRallyGuests(rallyGuests.filter((g) => g !== guest));
+    if (rallyGuests.length >= 4) return;
+    setRallyGuests([...rallyGuests, guest]);
+  };
+
   const toggleOption = (option) => {
     const exists = selectedOptions.some((item) => item.id === option.id);
     if (exists) return setSelectedOptions(selectedOptions.filter((item) => item.id !== option.id));
@@ -37,12 +47,20 @@ export default function PlanningPage() {
     const mediaPayload = pendingMediaQuestion
       ? (mediaChoice === 'ignore' ? { ignored: true, answer: '' } : { ignored: false, answer: mediaAnswer })
       : null;
-    const next = proceedWeek(state, selectedOptions, mediaPayload);
+    const weekExtras = {
+      focusRegionId: focusRegionId || null,
+      tvShow: takeTvShow && event.weekOpportunity?.tvShow ? event.weekOpportunity.tvShow : null,
+      rallyGuests,
+    };
+    const next = proceedWeek(state, selectedOptions, mediaPayload, weekExtras);
     setState(next);
     saveGameState(next);
     setSelectedOptions([]);
     setMediaAnswer('');
     setMediaChoice('answer');
+    setFocusRegionId('');
+    setTakeTvShow(false);
+    setRallyGuests([]);
     if (!isFinished(next)) setEvent(generateWeeklyEvent(next));
     router.push('/briefing');
   };
@@ -61,6 +79,41 @@ export default function PlanningPage() {
       <section className="glass panel">
         <h2>Week {state.week} Planning Room</h2>
         <p>{state.country.icon} {state.country.name} • {state.candidate.party} • National Pulse {score.nationalPulse}% • Target {score.target}</p>
+      </section>
+
+
+      <section className="glass panel">
+        <h2>🎛️ Personalized Week Controls</h2>
+        <p><strong>Candidate:</strong> {state.candidate.name} vs {state.opponent.name}</p>
+        <label htmlFor="focusRegion">Focus Campaign Region</label>
+        <select id="focusRegion" value={focusRegionId} onChange={(e) => setFocusRegionId(e.target.value)}>
+          <option value="">No special focus</option>
+          {state.country.regions.map((region) => (
+            <option key={region.id} value={region.id}>{region.name}</option>
+          ))}
+        </select>
+
+        {event.weekOpportunity?.tvShow ? (
+          <p>
+            <label>
+              <input type="checkbox" checked={takeTvShow} onChange={(e) => setTakeTvShow(e.target.checked)} />
+              Join TV Live Show: <strong>{event.weekOpportunity.tvShow}</strong>
+            </label>
+          </p>
+        ) : (
+          <p>No TV live show invitation this week.</p>
+        )}
+
+        {event.week === state.totalWeeks ? (
+          <>
+            <h3>🎉 Grand Rally Guest List (max 4)</h3>
+            {['Family Member', 'Community Leader', 'Faith Leader', 'Youth Organizer', 'Labor Representative', 'Business Ally', 'Entertainer', 'Co-politician'].map((guest) => (
+              <label key={guest} className="guestPick">
+                <input type="checkbox" checked={rallyGuests.includes(guest)} onChange={() => toggleRallyGuest(guest)} /> {guest}
+              </label>
+            ))}
+          </>
+        ) : null}
       </section>
 
       {pendingMediaQuestion ? (

@@ -42,6 +42,31 @@ export default function BriefingPage() {
           )}
         </section>
 
+
+        <section className="glass panel">
+          <h2>🪪 Candidate Profiles</h2>
+          <p><strong>{state.candidate.name}</strong> ({state.candidate.party})</p>
+          <p>{state.candidate.profile?.race} • {state.candidate.profile?.gender} • age {state.candidate.profile?.age}</p>
+          <p><strong>Profession:</strong> {state.candidate.profile?.profession} | <strong>Economic Status:</strong> {state.candidate.profile?.economicStatus}</p>
+          <p><strong>Policies:</strong> {state.candidate.profile?.policies}</p>
+          <p><strong>Projects:</strong> {state.candidate.profile?.projects}</p>
+          <p><strong>Values:</strong> {state.candidate.profile?.lifeValues}</p>
+          <hr />
+          <p><strong>{state.opponent.name}</strong> ({state.opponent.party})</p>
+          <p>{state.opponent.profile?.race} • {state.opponent.profile?.gender} • age {state.opponent.profile?.age}</p>
+          <p><strong>Profession:</strong> {state.opponent.profile?.profession} | <strong>Economic Status:</strong> {state.opponent.profile?.economicStatus}</p>
+          <p><strong>Policies:</strong> {state.opponent.profile?.policies}</p>
+          <p><strong>Projects:</strong> {state.opponent.profile?.projects}</p>
+          <p><strong>Values:</strong> {state.opponent.profile?.lifeValues}</p>
+        </section>
+
+        <section className="glass panel">
+          <h2>🎯 Strategic Focus Tracker</h2>
+          <p><strong>Focused Region:</strong> {state.meta.focusRegionName || 'None selected last week'}</p>
+          <p><strong>Grand Rally:</strong> {state.meta.rallyPlan ? `Hosted with ${state.meta.rallyPlan.guests.join(', ')}` : 'No grand rally yet'}</p>
+          <p><strong>Rally Impact:</strong> {state.meta.rallyPlan ? `+${state.meta.rallyPlan.impact} momentum package` : 'N/A'}</p>
+        </section>
+
         <section className="glass panel">
           <h2>Campaign Event & Score Drift Check</h2>
           <p><strong>Weekly Event:</strong> {state.meta.weeklyEvent?.title || 'N/A'}</p>

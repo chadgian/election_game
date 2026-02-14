@@ -18,6 +18,17 @@ export default function HQPage() {
   const [state, setState] = useState(() => newGame('United States', 'Independent', ['Independent']));
   const [event, setEvent] = useState(() => generateWeeklyEvent(state));
 
+  const [playerName, setPlayerName] = useState('Player Candidate');
+  const [opponentName, setOpponentName] = useState('Main Rival');
+  const [opponentParty, setOpponentParty] = useState('National Opposition Coalition');
+  const [opponentStyle, setOpponentStyle] = useState('Technocratic Reformer');
+  const [opponentAggression, setOpponentAggression] = useState(55);
+  const [opponentDiscipline, setOpponentDiscipline] = useState(55);
+  const [opponentMediaSkill, setOpponentMediaSkill] = useState(55);
+  const [opponentPolicyDepth, setOpponentPolicyDepth] = useState(55);
+  const [candidateProfile, setCandidateProfile] = useState({ race: 'Prefer not to say', age: 50, gender: 'Not specified', profession: 'Public servant', economicStatus: 'Middle class', policies: '', projects: '', lifeValues: '' });
+  const [opponentProfile, setOpponentProfile] = useState({ race: 'Prefer not to say', age: 52, gender: 'Not specified', profession: 'Public servant', economicStatus: 'Middle class', policies: '', projects: '', lifeValues: '' });
+
   const loadParties = async (country, preferredParty) => {
     try {
       const cacheKey = 'election-local-party-map-v1';
@@ -61,6 +72,16 @@ export default function HQPage() {
         setState(stored);
         setSelectedCountry(country);
         setSelectedParty(party);
+        setPlayerName(stored.candidate?.name || 'Player Candidate');
+        setOpponentName(stored.opponent?.name || 'Main Rival');
+        setOpponentParty(stored.opponent?.party || 'National Opposition Coalition');
+        setOpponentStyle(stored.opponent?.traits?.style || 'Technocratic Reformer');
+        setOpponentAggression(stored.opponent?.traits?.aggression || 55);
+        setOpponentDiscipline(stored.opponent?.traits?.discipline || 55);
+        setOpponentMediaSkill(stored.opponent?.traits?.mediaSkill || 55);
+        setOpponentPolicyDepth(stored.opponent?.traits?.policyDepth || 55);
+        setCandidateProfile(stored.candidate?.profile || { race: 'Prefer not to say', age: 50, gender: 'Not specified', profession: 'Public servant', economicStatus: 'Middle class', policies: '', projects: '', lifeValues: '' });
+        setOpponentProfile(stored.opponent?.profile || { race: 'Prefer not to say', age: 52, gender: 'Not specified', profession: 'Public servant', economicStatus: 'Middle class', policies: '', projects: '', lifeValues: '' });
         setEvent(generateWeeklyEvent(stored));
         setIsHydrated(true);
 
@@ -98,8 +119,15 @@ export default function HQPage() {
   const analystTip = useMemo(() => getAnalystTip(state, event, []), [state, event]);
   const resultBreakdown = useMemo(() => getResultBreakdown(state), [state]);
 
-  const resetCampaign = (country, party, parties) => {
-    const next = newGame(country, party, parties);
+  const resetCampaign = (country, party, parties, setup = null) => {
+    const next = newGame(country, party, parties, setup || {
+      playerName,
+      opponentName,
+      opponentParty,
+      opponentTraits: { style: opponentStyle, aggression: Number(opponentAggression), discipline: Number(opponentDiscipline), mediaSkill: Number(opponentMediaSkill), policyDepth: Number(opponentPolicyDepth) },
+      candidateProfile: { ...candidateProfile, age: Number(candidateProfile.age || 50) },
+      opponentProfile: { ...opponentProfile, age: Number(opponentProfile.age || 52) },
+    });
     setState(next);
     setEvent(generateWeeklyEvent(next));
   };
@@ -115,6 +143,24 @@ export default function HQPage() {
     resetCampaign(selectedCountry, party, partyOptions);
   };
 
+
+  const applyPersonalization = () => {
+    resetCampaign(selectedCountry, selectedParty, partyOptions, {
+      playerName,
+      opponentName,
+      opponentParty,
+      opponentTraits: {
+        style: opponentStyle,
+        aggression: Number(opponentAggression),
+        discipline: Number(opponentDiscipline),
+        mediaSkill: Number(opponentMediaSkill),
+        policyDepth: Number(opponentPolicyDepth),
+      },
+      candidateProfile: { ...candidateProfile, age: Number(candidateProfile.age || 50) },
+      opponentProfile: { ...opponentProfile, age: Number(opponentProfile.age || 52) },
+    });
+  };
+
   return (
     <main className="game">
       {!isFinished(state) ? <AnalystBubble tip={analystTip} /> : null}
@@ -127,6 +173,48 @@ export default function HQPage() {
         onSelectParty={handlePartyChange}
         partySource={partySource}
       />
+
+      <section className="glass panel profileSetup">
+        <h2>🧬 Campaign Personalization</h2>
+        <p>Customize candidate/opponent identity, party, characteristics, and policy profile.</p>
+        <div className="profileGrid">
+          <div>
+            <h3>Player</h3>
+            <input value={playerName} onChange={(e) => setPlayerName(e.target.value)} placeholder="Player name" />
+            <input value={candidateProfile.race} onChange={(e) => setCandidateProfile({ ...candidateProfile, race: e.target.value })} placeholder="Race / Ethnicity" />
+            <input type="number" value={candidateProfile.age} onChange={(e) => setCandidateProfile({ ...candidateProfile, age: e.target.value })} placeholder="Age" />
+            <input value={candidateProfile.gender} onChange={(e) => setCandidateProfile({ ...candidateProfile, gender: e.target.value })} placeholder="Gender" />
+            <input value={candidateProfile.profession} onChange={(e) => setCandidateProfile({ ...candidateProfile, profession: e.target.value })} placeholder="Profession" />
+            <input value={candidateProfile.economicStatus} onChange={(e) => setCandidateProfile({ ...candidateProfile, economicStatus: e.target.value })} placeholder="Economic status" />
+            <textarea value={candidateProfile.policies} onChange={(e) => setCandidateProfile({ ...candidateProfile, policies: e.target.value })} placeholder="Policies" />
+            <textarea value={candidateProfile.projects} onChange={(e) => setCandidateProfile({ ...candidateProfile, projects: e.target.value })} placeholder="Proposed projects" />
+            <textarea value={candidateProfile.lifeValues} onChange={(e) => setCandidateProfile({ ...candidateProfile, lifeValues: e.target.value })} placeholder="Values in life" />
+          </div>
+          <div>
+            <h3>Opponent</h3>
+            <input value={opponentName} onChange={(e) => setOpponentName(e.target.value)} placeholder="Opponent name" />
+            <select value={opponentParty} onChange={(e) => setOpponentParty(e.target.value)}>
+              {[...new Set([...partyOptions, 'National Opposition Coalition'])].map((party) => <option key={party} value={party}>{party}</option>)}
+            </select>
+            <select value={opponentStyle} onChange={(e) => setOpponentStyle(e.target.value)}>
+              {['Populist Nationalist', 'Technocratic Reformer', 'Traditional Conservative', 'Grassroots Progressive', 'Media Savvy Centrist'].map((style) => <option key={style} value={style}>{style}</option>)}
+            </select>
+            <label>Aggression <input type="range" min="20" max="90" value={opponentAggression} onChange={(e) => setOpponentAggression(e.target.value)} /></label>
+            <label>Discipline <input type="range" min="20" max="90" value={opponentDiscipline} onChange={(e) => setOpponentDiscipline(e.target.value)} /></label>
+            <label>Media Skill <input type="range" min="20" max="90" value={opponentMediaSkill} onChange={(e) => setOpponentMediaSkill(e.target.value)} /></label>
+            <label>Policy Depth <input type="range" min="20" max="90" value={opponentPolicyDepth} onChange={(e) => setOpponentPolicyDepth(e.target.value)} /></label>
+            <input value={opponentProfile.race} onChange={(e) => setOpponentProfile({ ...opponentProfile, race: e.target.value })} placeholder="Race / Ethnicity" />
+            <input type="number" value={opponentProfile.age} onChange={(e) => setOpponentProfile({ ...opponentProfile, age: e.target.value })} placeholder="Age" />
+            <input value={opponentProfile.gender} onChange={(e) => setOpponentProfile({ ...opponentProfile, gender: e.target.value })} placeholder="Gender" />
+            <input value={opponentProfile.profession} onChange={(e) => setOpponentProfile({ ...opponentProfile, profession: e.target.value })} placeholder="Profession" />
+            <input value={opponentProfile.economicStatus} onChange={(e) => setOpponentProfile({ ...opponentProfile, economicStatus: e.target.value })} placeholder="Economic status" />
+            <textarea value={opponentProfile.policies} onChange={(e) => setOpponentProfile({ ...opponentProfile, policies: e.target.value })} placeholder="Policies" />
+            <textarea value={opponentProfile.projects} onChange={(e) => setOpponentProfile({ ...opponentProfile, projects: e.target.value })} placeholder="Proposed projects" />
+            <textarea value={opponentProfile.lifeValues} onChange={(e) => setOpponentProfile({ ...opponentProfile, lifeValues: e.target.value })} placeholder="Values in life" />
+          </div>
+        </div>
+        <button className="proceedBtn" onClick={applyPersonalization}>Apply Personalization & Restart Campaign</button>
+      </section>
 
       <section className="glass pageTabs">
         <Link href="/" className="tab active">🏛️ HQ</Link>

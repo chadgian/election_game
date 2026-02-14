@@ -16,6 +16,8 @@ Election Command is a mobile-friendly political strategy game with a war-room in
 - **Multi-action weekly planning**: pick several campaign actions each week, then click **Proceed Week**.
 - **Opposition AI actions + random weekly events** that impact score and region control.
 - **Country + political party setup** (parties loaded from local dataset and cached in localStorage for faster startup).
+- **Candidate and opponent personalization**: names, opponent party/traits, and profile attributes that influence campaign flavor and outcomes.
+- **Weekly strategic extras**: focused region boost, optional TV live show appearances, and final-week grand rally guest list.
 - **Weekly media Q&A system**: random press questions, answer/ignore choice, AI-style scoring against opposition response, then impact applied in weekly results.
 - **Floating campaign analyst** that reads current + previous week selections and can sometimes be wrong (can be hidden/shown).
 

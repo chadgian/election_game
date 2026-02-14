@@ -18,6 +18,25 @@ const mediaQuestionTopics = [
   { topic: 'cost of living', intensity: 6 },
 ];
 const oppositionArchetypes = ['Populist Nationalist', 'Technocratic Reformer', 'Traditional Conservative', 'Grassroots Progressive', 'Media Savvy Centrist'];
+const profileDefaults = {
+  race: 'Prefer not to say',
+  age: 50,
+  gender: 'Not specified',
+  profession: 'Public servant',
+  economicStatus: 'Middle class',
+  policies: 'Balanced growth and institutional reform',
+  projects: 'Regional jobs and infrastructure program',
+  lifeValues: 'Integrity, service, and accountability',
+};
+
+const tvShowsByCountry = {
+  'United States': ['Town Hall Live', 'Sunday Policy Forum', 'Late Night Civic Debate'],
+  Philippines: ['Harapan sa Bayan', 'National Pulse Tonight', 'Balita at Boto Special'],
+  'United Kingdom': ['Westminster Live Debate', 'Nation Speaks', 'Prime Issues Tonight'],
+};
+
+const rallyGuestPool = ['Family Member', 'Community Leader', 'Faith Leader', 'Youth Organizer', 'Labor Representative', 'Business Ally', 'Entertainer', 'Co-politician'];
+
 
 const clamp = (v) => Math.max(0, Math.min(100, Math.round(v)));
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min)) + min;
@@ -309,16 +328,23 @@ export const evaluateMediaRound = (state, payload) => {
   };
 };
 
-export const newGame = (countryName = 'United States', party = 'Independent', partyList = []) => {
+export const newGame = (countryName = 'United States', party = 'Independent', partyList = [], setup = {}) => {
   const country = getCountryProfile(countryName);
-  const opponentTraits = generateOpponentTraits();
+  const opponentTraits = setup.opponentTraits || generateOpponentTraits();
+  const candidateProfile = { ...profileDefaults, ...(setup.candidateProfile || {}) };
+  const opponentProfile = { ...profileDefaults, ...(setup.opponentProfile || {}) };
+  const playerName = setup.playerName || 'Player Candidate';
+  const opponentName = setup.opponentName || 'Main Rival';
+  const opponentParty = setup.opponentParty || pickOpponentParty(party, partyList);
+
   return {
     week: 1,
     totalWeeks: TOTAL_WEEKS,
     country,
     candidate: {
-      name: 'Player Candidate',
+      name: playerName,
       party,
+      profile: candidateProfile,
       funds: 250,
       momentum: 52,
       scandalRisk: 12,
@@ -330,8 +356,9 @@ export const newGame = (countryName = 'United States', party = 'Independent', pa
       regions: buildRegions(country),
     },
     opponent: {
-      name: 'Main Rival',
-      party: pickOpponentParty(party, partyList),
+      name: opponentName,
+      party: opponentParty,
+      profile: opponentProfile,
       traits: opponentTraits,
       momentum: 50,
       fieldPower: 47,
@@ -349,8 +376,13 @@ export const newGame = (countryName = 'United States', party = 'Independent', pa
       pendingEvent: null,
       pendingMediaQuestion: null,
       mediaHistory: [],
+      weeklyImpact: null,
+      focusRegionId: null,
+      focusRegionName: null,
+      weekOpportunity: null,
+      rallyPlan: null,
     },
-    log: [`Campaign launched in ${country.name}.`],
+    log: [`Campaign launched in ${country.name} by ${playerName} (${party}).`],
     delayed: {},
   };
 };
@@ -413,12 +445,19 @@ export const generateWeeklyEvent = (state) => {
     };
   });
 
+  const availableShows = tvShowsByCountry[state.country.name] || ['National Policy Live', 'The Voter Hour', 'Election Night Forum'];
+  const weekOpportunity = {
+    tvShow: Math.random() > 0.58 ? sample(availableShows) : null,
+    grandRally: state.week === state.totalWeeks ? true : false,
+  };
+
   return {
     week: state.week,
     context,
     icon: '🗳️',
     prompt: eventPrompt(context),
     options,
+    weekOpportunity,
   };
 };
 
@@ -553,7 +592,75 @@ const applyOppositionAction = (state, weeklyLog) => {
   };
 };
 
-export const proceedWeek = (state, selectedOptions, mediaResponse = null) => {
+const applyWeekExtras = (state, weekExtras, weeklyLog) => {
+  let nextState = { ...state };
+  const focusRegionId = weekExtras?.focusRegionId || null;
+  const tvShow = weekExtras?.tvShow || null;
+  const rallyGuests = weekExtras?.rallyGuests || [];
+
+  if (focusRegionId) {
+    const region = nextState.candidate.regions[focusRegionId];
+    if (region) {
+      nextState = {
+        ...nextState,
+        candidate: {
+          ...nextState.candidate,
+          regions: {
+            ...nextState.candidate.regions,
+            [focusRegionId]: {
+              ...region,
+              playerSupport: clamp(region.playerSupport + randomInt(2, 6)),
+              turnout: clamp(region.turnout + randomInt(1, 5)),
+            },
+          },
+        },
+        meta: {
+          ...nextState.meta,
+          focusRegionId,
+          focusRegionName: region.name,
+        },
+      };
+      weeklyLog.push(`📍 Focus campaign boost applied to ${region.name}.`);
+    }
+  }
+
+  if (tvShow) {
+    nextState = {
+      ...nextState,
+      candidate: {
+        ...nextState.candidate,
+        momentum: clamp(nextState.candidate.momentum + randomInt(1, 6)),
+        mediaTrust: clamp(nextState.candidate.mediaTrust + randomInt(1, 7)),
+        energy: clamp(nextState.candidate.energy - randomInt(2, 6)),
+      },
+    };
+    weeklyLog.push(`📺 Live TV appearance on ${tvShow} influenced national media narrative.`);
+  }
+
+  if (nextState.week === nextState.totalWeeks && rallyGuests.length) {
+    const guestImpact = Math.min(10, rallyGuests.length * 2);
+    nextState = {
+      ...nextState,
+      candidate: {
+        ...nextState.candidate,
+        momentum: clamp(nextState.candidate.momentum + guestImpact),
+        fieldPower: clamp(nextState.candidate.fieldPower + Math.max(1, Math.round(guestImpact / 2))),
+      },
+      meta: {
+        ...nextState.meta,
+        rallyPlan: {
+          guests: rallyGuests,
+          impact: guestImpact,
+        },
+      },
+    };
+    weeklyLog.push(`🎉 Grand rally held with guests: ${rallyGuests.join(', ')}.`);
+  }
+
+  return nextState;
+};
+
+export const proceedWeek = (state, selectedOptions, mediaResponse = null, weekExtras = null) => {
   if (!selectedOptions.length) {
     return { ...state, log: [...state.log, 'No actions selected. Week cannot proceed.'].slice(-80) };
   }
@@ -566,6 +673,8 @@ export const proceedWeek = (state, selectedOptions, mediaResponse = null) => {
     weeklyLog.push(`${option.icon} ${option.title} (${option.track})`);
     nextState = applySingleChoice(nextState, option, weeklyLog);
   });
+
+  nextState = applyWeekExtras(nextState, weekExtras, weeklyLog);
 
   if (nextState.meta.pendingMediaQuestion) {
     const mediaOutcome = evaluateMediaRound(nextState, mediaResponse);
@@ -623,6 +732,7 @@ export const proceedWeek = (state, selectedOptions, mediaResponse = null) => {
       actionHistory: history,
       strategistConfidence: clamp(nextState.meta.strategistConfidence + randomInt(-7, 8)),
       pendingMediaQuestion: nextMediaQuestion,
+      weekOpportunity: null,
     },
     log: [...nextState.log, ...weeklyLog].slice(-80),
   };
@@ -674,6 +784,8 @@ export const getRules = (state) => [
   'Opposition acts every week and can target regions you ignore.',
   'Random world events can alter momentum and trust.',
   'Some weeks trigger media questions. Answering well can improve trust and momentum.',
+  'You can focus campaign resources on a specific region each week.',
+  'Some weeks offer live TV shows; final week supports a grand rally guest list.',
   `Reach target score (${state.country.targetScore}) by endgame to win.`,
 ];
 
