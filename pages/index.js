@@ -7,6 +7,7 @@ import AnalystBubble from '../src/components/AnalystBubble';
 import { DemographicsPanel, FeedPanel, SystemsPanel } from '../src/components/SidePanels';
 import { computeElectionScore, generateWeeklyEvent, getAnalystTip, getResultBreakdown, getRules, isFinished, newGame, resultSummary } from '../src/game/gameEngine';
 import { loadGameState, saveGameState } from '../src/game/session';
+import { buildLocalPartyMap, getPartiesForCountry } from '../src/data/parties';
 
 export default function HQPage() {
   const [selectedCountry, setSelectedCountry] = useState('United States');
@@ -19,18 +20,30 @@ export default function HQPage() {
 
   const loadParties = async (country, preferredParty) => {
     try {
-      const response = await fetch(`/api/parties?country=${encodeURIComponent(country)}`);
-      const data = await response.json();
-      const options = data.parties?.length ? data.parties : ['Independent'];
-      setPartyOptions(options);
-      setPartySource(data.source || 'fallback');
-      const nextParty = options.includes(preferredParty) ? preferredParty : options[0];
+      const cacheKey = 'election-local-party-map-v1';
+      let partyMap = null;
+      if (typeof window !== 'undefined') {
+        const cached = window.localStorage.getItem(cacheKey);
+        partyMap = cached ? JSON.parse(cached) : null;
+      }
+
+      if (!partyMap) {
+        partyMap = buildLocalPartyMap();
+        if (typeof window !== 'undefined') window.localStorage.setItem(cacheKey, JSON.stringify(partyMap));
+      }
+
+      const options = partyMap[country] || getPartiesForCountry(country);
+      const safeOptions = options.length ? options : ['Independent'];
+      setPartyOptions(safeOptions);
+      setPartySource('local-cache');
+      const nextParty = safeOptions.includes(preferredParty) ? preferredParty : safeOptions[0];
       setSelectedParty(nextParty);
-      return { options, nextParty };
+      return { options: safeOptions, nextParty };
     } catch {
-      const options = ['Independent'];
+      const fallback = getPartiesForCountry(country);
+      const options = fallback.length ? fallback : ['Independent'];
       setPartyOptions(options);
-      setPartySource('fallback');
+      setPartySource('local-fallback');
       setSelectedParty(options[0]);
       return { options, nextParty: options[0] };
     }
