@@ -474,6 +474,54 @@ const applySingleChoice = (state, option, weeklyLog) => {
   };
 };
 
+const buildWeeklyImpactSummary = (beforeState, afterState, selectedOptions) => {
+  const systems = [
+    ['Momentum', afterState.candidate.momentum - beforeState.candidate.momentum],
+    ['Media Trust', afterState.candidate.mediaTrust - beforeState.candidate.mediaTrust],
+    ['Field Power', afterState.candidate.fieldPower - beforeState.candidate.fieldPower],
+    ['Narrative', afterState.meta.narrative - beforeState.meta.narrative],
+    ['Scandal Risk', afterState.candidate.scandalRisk - beforeState.candidate.scandalRisk],
+    ['Energy', afterState.candidate.energy - beforeState.candidate.energy],
+    ['Funds', afterState.candidate.funds - beforeState.candidate.funds],
+  ].map(([label, delta]) => ({ label, delta }));
+
+  const demographics = Object.values(afterState.candidate.demographics)
+    .map((demo) => {
+      const before = beforeState.candidate.demographics[demo.id];
+      const delta = (demo.support || 0) - (before?.support || 0);
+      return { name: demo.name, delta };
+    })
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+
+  const regionSwings = Object.values(afterState.candidate.regions)
+    .map((region) => {
+      const before = beforeState.candidate.regions[region.id];
+      const supportDelta = (region.playerSupport || 0) - (before?.playerSupport || 0);
+      const turnoutDelta = (region.turnout || 0) - (before?.turnout || 0);
+      return { name: region.name, supportDelta, turnoutDelta };
+    })
+    .sort((a, b) => Math.abs(b.supportDelta) - Math.abs(a.supportDelta));
+
+  const scoreBefore = computeElectionScore(beforeState);
+  const scoreAfter = computeElectionScore(afterState);
+
+  return {
+    week: beforeState.week,
+    tracks: selectedOptions.map((o) => o.track),
+    systems,
+    demographics: {
+      topGain: demographics.find((d) => d.delta > 0) || null,
+      topLoss: demographics.find((d) => d.delta < 0) || null,
+      movers: demographics.slice(0, 4),
+    },
+    electoralTheater: {
+      pulseDelta: scoreAfter.nationalPulse - scoreBefore.nationalPulse,
+      scoreDelta: scoreAfter.player - scoreBefore.player,
+      topRegions: regionSwings.slice(0, 3),
+    },
+  };
+};
+
 const applyOppositionAction = (state, weeklyLog) => {
   const plan = generateOppositionPlan(state);
   const regions = { ...state.candidate.regions };
@@ -510,6 +558,7 @@ export const proceedWeek = (state, selectedOptions, mediaResponse = null) => {
     return { ...state, log: [...state.log, 'No actions selected. Week cannot proceed.'].slice(-80) };
   }
 
+  const beforeState = JSON.parse(JSON.stringify(state));
   let nextState = { ...state };
   const weeklyLog = [`📅 Week ${state.week} Plan:`];
 
@@ -561,7 +610,7 @@ export const proceedWeek = (state, selectedOptions, mediaResponse = null) => {
     dark: selectedOptions.filter((o) => o.unethical).length,
   }].slice(-6);
 
-  return {
+  const impactedState = {
     ...nextState,
     week: nextWeek,
     candidate,
@@ -576,6 +625,16 @@ export const proceedWeek = (state, selectedOptions, mediaResponse = null) => {
       pendingMediaQuestion: nextMediaQuestion,
     },
     log: [...nextState.log, ...weeklyLog].slice(-80),
+  };
+
+  const weeklyImpact = buildWeeklyImpactSummary(beforeState, impactedState, selectedOptions);
+
+  return {
+    ...impactedState,
+    meta: {
+      ...impactedState.meta,
+      weeklyImpact,
+    },
   };
 };
 

@@ -15,6 +15,7 @@ export default function BriefingPage() {
   const lastHistory = state.meta.actionHistory?.[state.meta.actionHistory.length - 1];
   const lastMedia = state.meta.mediaHistory?.[state.meta.mediaHistory.length - 1];
   const opp = state.opponent.currentPlan;
+  const weeklyImpact = state.meta.weeklyImpact;
 
   return (
     <main className="game">
@@ -61,6 +62,35 @@ export default function BriefingPage() {
             </>
           ) : (
             <p>No media question resolved yet.</p>
+          )}
+        </section>
+
+
+        <section className="glass panel impactPanel">
+          <h2>📈 Last Week Impact Summary</h2>
+          {weeklyImpact ? (
+            <>
+              <p><strong>Week:</strong> {weeklyImpact.week}</p>
+              <p><strong>Selected tracks:</strong> {weeklyImpact.tracks.join(', ') || 'N/A'}</p>
+
+              <h3>Systems</h3>
+              {weeklyImpact.systems.map((s) => (
+                <p key={s.label}>• {s.label}: {s.delta >= 0 ? '+' : ''}{s.delta}</p>
+              ))}
+
+              <h3>Demographics</h3>
+              <p><strong>Top gain:</strong> {weeklyImpact.demographics.topGain ? `${weeklyImpact.demographics.topGain.name} (${weeklyImpact.demographics.topGain.delta >= 0 ? '+' : ''}${weeklyImpact.demographics.topGain.delta})` : 'None'}</p>
+              <p><strong>Top loss:</strong> {weeklyImpact.demographics.topLoss ? `${weeklyImpact.demographics.topLoss.name} (${weeklyImpact.demographics.topLoss.delta})` : 'None'}</p>
+
+              <h3>Electoral Theater</h3>
+              <p><strong>National pulse:</strong> {weeklyImpact.electoralTheater.pulseDelta >= 0 ? '+' : ''}{weeklyImpact.electoralTheater.pulseDelta}</p>
+              <p><strong>Projected score swing:</strong> {weeklyImpact.electoralTheater.scoreDelta >= 0 ? '+' : ''}{weeklyImpact.electoralTheater.scoreDelta}</p>
+              {weeklyImpact.electoralTheater.topRegions.map((r) => (
+                <p key={r.name}>• {r.name}: support {r.supportDelta >= 0 ? '+' : ''}{r.supportDelta}, turnout {r.turnoutDelta >= 0 ? '+' : ''}{r.turnoutDelta}</p>
+              ))}
+            </>
+          ) : (
+            <p>No completed week impact summary yet.</p>
           )}
         </section>
 
